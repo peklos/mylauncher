@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyLauncher</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    @font-face {
+      font-family: 'SystemFont';
+      src: local('Segoe UI'), local('Arial'), local('sans-serif');
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .app {
+      width: 600px;
+      height: 500px;
+      background: linear-gradient(145deg, #0a0a1a 0%, #0d0d2b 50%, #0a0a1a 100%);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 255, 255, 0.15);
+      box-shadow:
+        0 0 30px rgba(0, 255, 255, 0.05),
+        inset 0 0 60px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Animated background glow */
+    .app::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 40%, rgba(0, 255, 255, 0.03) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 60%, rgba(138, 43, 226, 0.03) 0%, transparent 50%);
+      animation: bgPulse 8s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    @keyframes bgPulse {
+      0% { opacity: 0.5; transform: scale(1) rotate(0deg); }
+      100% { opacity: 1; transform: scale(1.1) rotate(5deg); }
+    }
+
+    /* Title bar */
+    .titlebar {
+      -webkit-app-region: drag;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .titlebar-title {
+      color: rgba(0, 255, 255, 0.7);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .titlebar-buttons {
+      display: flex;
+      gap: 8px;
+      -webkit-app-region: no-drag;
+    }
+
+    .titlebar-btn {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      opacity: 0.6;
+    }
+
+    .titlebar-btn:hover {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+
+    .btn-minimize { background: #ffbd2e; }
+    .btn-close { background: #ff5f57; }
+
+    /* Pages */
+    .page {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 40px;
+      position: absolute;
+      top: 40px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    .page.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: all;
+    }
+
+    /* Main page */
+    .logo {
+      font-size: 42px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #00ffff, #8a2be2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      animation: logoGlow 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes logoGlow {
+      0% { filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.3)); }
+      100% { filter: drop-shadow(0 0 20px rgba(138, 43, 226, 0.4)); }
+    }
+
+    .subtitle {
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-bottom: 50px;
+    }
+
+    /* Buttons */
+    .btn-launch {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      background: radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+      color: #00ffff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .btn-launch::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 255, 255, 0.1);
+      animation: ringPulse 2s ease-in-out infinite;
+    }
+
+    .btn-launch::after {
+      content: '';
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 255, 255, 0.05);
+      animation: ringPulse 2s ease-in-out infinite 0.5s;
+    }
+
+    @keyframes ringPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.5; }
+    }
+
+    .btn-launch:hover {
+      border-color: rgba(0, 255, 255, 0.6);
+      background: radial-gradient(circle, rgba(0, 255, 255, 0.2) 0%, transparent 70%);
+      box-shadow: 0 0 40px rgba(0, 255, 255, 0.2), inset 0 0 40px rgba(0, 255, 255, 0.05);
+      transform: scale(1.05);
+    }
+
+    .btn-launch:active {
+      transform: scale(0.95);
+      border-color: rgba(138, 43, 226, 0.8);
+      color: #8a2be2;
+    }
+
+    .btn-launch.launching {
+      animation: launchSpin 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    @keyframes launchSpin {
+      0% { transform: scale(1); border-color: rgba(0, 255, 255, 0.3); }
+      30% { transform: scale(0.9); border-color: rgba(138, 43, 226, 0.8); }
+      60% { transform: scale(1.1); border-color: rgba(0, 255, 255, 0.8); box-shadow: 0 0 60px rgba(0, 255, 255, 0.4); }
+      100% { transform: scale(1); border-color: rgba(0, 255, 255, 0.3); }
+    }
+
+    .btn-settings {
+      margin-top: 30px;
+      padding: 10px 28px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 25px;
+      background: rgba(255, 255, 255, 0.03);
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 1px;
+    }
+
+    .btn-settings:hover {
+      border-color: rgba(138, 43, 226, 0.4);
+      color: rgba(138, 43, 226, 0.8);
+      background: rgba(138, 43, 226, 0.05);
+      box-shadow: 0 0 20px rgba(138, 43, 226, 0.1);
+    }
+
+    /* Settings page */
+    .settings-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      width: 100%;
+    }
+
+    .btn-back {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: transparent;
+      color: rgba(0, 255, 255, 0.6);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-back:hover {
+      border-color: rgba(0, 255, 255, 0.4);
+      background: rgba(0, 255, 255, 0.05);
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
+    }
+
+    .settings-title {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .settings-form {
+      width: 100%;
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .settings-form::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .settings-form::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .settings-form::-webkit-scrollbar-thumb {
+      background: rgba(0, 255, 255, 0.2);
+      border-radius: 2px;
+    }
+
+    .field {
+      margin-bottom: 16px;
+      animation: fieldIn 0.4s ease backwards;
+    }
+
+    .field:nth-child(1) { animation-delay: 0.05s; }
+    .field:nth-child(2) { animation-delay: 0.1s; }
+    .field:nth-child(3) { animation-delay: 0.15s; }
+    .field:nth-child(4) { animation-delay: 0.2s; }
+    .field:nth-child(5) { animation-delay: 0.25s; }
+
+    @keyframes fieldIn {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .field label {
+      display: block;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 13px;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .field input:focus {
+      border-color: rgba(0, 255, 255, 0.3);
+      background: rgba(0, 255, 255, 0.03);
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.05);
+    }
+
+    .field input::placeholder {
+      color: rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-save {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 10px;
+      background: rgba(0, 255, 255, 0.05);
+      color: #00ffff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 1px;
+      margin-top: 8px;
+    }
+
+    .btn-save:hover {
+      background: rgba(0, 255, 255, 0.1);
+      box-shadow: 0 0 25px rgba(0, 255, 255, 0.15);
+    }
+
+    .btn-save.saved {
+      border-color: rgba(0, 255, 100, 0.5);
+      color: #00ff64;
+      background: rgba(0, 255, 100, 0.05);
+    }
+
+    /* Status text */
+    .status {
+      position: absolute;
+      bottom: 16px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.2);
+      font-size: 11px;
+      letter-spacing: 1px;
+      transition: all 0.5s ease;
+    }
+
+    .status.active {
+      color: rgba(0, 255, 255, 0.5);
+    }
+
+    /* URL list in settings */
+    .urls-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .url-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .url-row input {
+      flex: 1;
+    }
+
+    .btn-url {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: transparent;
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .btn-url.add:hover {
+      border-color: rgba(0, 255, 100, 0.4);
+      color: #00ff64;
+    }
+
+    .btn-url.remove:hover {
+      border-color: rgba(255, 80, 80, 0.4);
+      color: #ff5050;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="titlebar">
+      <span class="titlebar-title">MyLauncher</span>
+      <div class="titlebar-buttons">
+        <button class="titlebar-btn btn-minimize" onclick="window.api.minimizeWindow()"></button>
+        <button class="titlebar-btn btn-close" onclick="window.api.closeWindow()"></button>
+      </div>
+    </div>
+
+    <!-- Main Page -->
+    <div class="page active" id="page-main">
+      <div class="logo">LAUNCH</div>
+      <div class="subtitle">your workspace</div>
+
+      <button class="btn-launch" id="btn-launch" onclick="doLaunch()">
+        START
+      </button>
+
+      <button class="btn-settings" onclick="showSettings()">
+        Settings
+      </button>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <!-- Settings Page -->
+    <div class="page" id="page-settings">
+      <div class="settings-header">
+        <button class="btn-back" onclick="showMain()">&larr;</button>
+        <span class="settings-title">Settings</span>
+      </div>
+
+      <div class="settings-form">
+        <div class="field">
+          <label>Steam</label>
+          <input type="text" id="input-steam" placeholder="C:\Program Files (x86)\Steam\steam.exe">
+        </div>
+
+        <div class="field">
+          <label>Discord</label>
+          <input type="text" id="input-discord" placeholder="C:\Users\...\Discord\Update.exe">
+        </div>
+
+        <div class="field">
+          <label>Firefox</label>
+          <input type="text" id="input-firefox" placeholder="C:\Program Files\Mozilla Firefox\firefox.exe">
+        </div>
+
+        <div class="field">
+          <label>Zapret</label>
+          <input type="text" id="input-zapret" placeholder="Path to zapret executable">
+        </div>
+
+        <div class="field">
+          <label>Firefox Tabs</label>
+          <div class="urls-list" id="urls-list"></div>
+          <button class="btn-url add" onclick="addUrl()" style="margin-top: 8px; width: auto; padding: 4px 12px; font-size: 12px;">+ Add URL</button>
+        </div>
+
+        <button class="btn-save" id="btn-save" onclick="doSave()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentSettings = {};
+
+    // Load settings on startup
+    window.addEventListener('DOMContentLoaded', async () => {
+      currentSettings = await window.api.getSettings();
+      populateSettings();
+    });
+
+    function populateSettings() {
+      document.getElementById('input-steam').value = currentSettings.steamPath || '';
+      document.getElementById('input-discord').value = currentSettings.discordPath || '';
+      document.getElementById('input-firefox').value = currentSettings.firefoxPath || '';
+      document.getElementById('input-zapret').value = currentSettings.zapretPath || '';
+      renderUrls();
+    }
+
+    function renderUrls() {
+      const list = document.getElementById('urls-list');
+      list.innerHTML = '';
+      (currentSettings.firefoxUrls || []).forEach((url, i) => {
+        const row = document.createElement('div');
+        row.className = 'url-row';
+        row.innerHTML = `
+          <input type="text" value="${url}" onchange="updateUrl(${i}, this.value)" placeholder="https://...">
+          <button class="btn-url remove" onclick="removeUrl(${i})">×</button>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    function addUrl() {
+      currentSettings.firefoxUrls = currentSettings.firefoxUrls || [];
+      currentSettings.firefoxUrls.push('');
+      renderUrls();
+      // Focus the new input
+      const inputs = document.querySelectorAll('#urls-list input');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    }
+
+    function removeUrl(index) {
+      currentSettings.firefoxUrls.splice(index, 1);
+      renderUrls();
+    }
+
+    function updateUrl(index, value) {
+      currentSettings.firefoxUrls[index] = value;
+    }
+
+    async function doSave() {
+      currentSettings.steamPath = document.getElementById('input-steam').value;
+      currentSettings.discordPath = document.getElementById('input-discord').value;
+      currentSettings.firefoxPath = document.getElementById('input-firefox').value;
+      currentSettings.zapretPath = document.getElementById('input-zapret').value;
+
+      await window.api.saveSettings(currentSettings);
+
+      const btn = document.getElementById('btn-save');
+      btn.textContent = 'Saved!';
+      btn.classList.add('saved');
+      setTimeout(() => {
+        btn.textContent = 'Save';
+        btn.classList.remove('saved');
+      }, 2000);
+    }
+
+    function showSettings() {
+      document.getElementById('page-main').classList.remove('active');
+      setTimeout(() => {
+        document.getElementById('page-settings').classList.add('active');
+      }, 100);
+    }
+
+    function showMain() {
+      document.getElementById('page-settings').classList.remove('active');
+      setTimeout(() => {
+        document.getElementById('page-main').classList.add('active');
+      }, 100);
+    }
+
+    async function doLaunch() {
+      const btn = document.getElementById('btn-launch');
+      const status = document.getElementById('status');
+
+      btn.classList.add('launching');
+      btn.textContent = '...';
+      status.textContent = 'Closing apps...';
+      status.classList.add('active');
+
+      try {
+        await window.api.launchDefault();
+        status.textContent = 'Launched!';
+        btn.textContent = 'DONE';
+
+        setTimeout(() => {
+          status.textContent = '';
+          status.classList.remove('active');
+          btn.textContent = 'START';
+          btn.classList.remove('launching');
+        }, 3000);
+      } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        btn.textContent = 'START';
+        btn.classList.remove('launching');
+
+        setTimeout(() => {
+          status.textContent = '';
+          status.classList.remove('active');
+        }, 5000);
+      }
+    }
+  </script>
+</body>
+</html>

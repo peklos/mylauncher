@@ -153,48 +153,52 @@ ipcMain.handle('launch-default', async () => {
   };
 });
 
-// Launch any app via PowerShell Start-Process — handles spaces, parentheses, any path
+// Launch any app — PowerShell only for .bat/.cmd (handles parentheses in path),
+// direct spawn for .exe/.lnk (simpler, more reliable)
 async function launchApp(exePath, args, name) {
   if (!fs.existsSync(exePath)) {
     return { error: `${name}: file not found — "${exePath}"` };
   }
 
+  const ext = path.extname(exePath).toLowerCase();
+  const isBat = ext === '.bat' || ext === '.cmd';
+
   try {
-    // PowerShell Start-Process with single-quoted path handles ALL special chars
-    // including spaces and parentheses like "general (ALT9).bat"
-    const argsStr = args.length > 0
-      ? ` -ArgumentList '${args.join("', '")}'`
-      : '';
-    const child = spawn('powershell', [
-      '-NoProfile', '-Command',
-      `Start-Process -FilePath '${exePath}'${argsStr}`
-    ], {
-      detached: true,
-      stdio: 'ignore'
-    });
-    child.unref();
+    if (isBat) {
+      // .bat/.cmd: must use PowerShell Start-Process with single-quoted path
+      // to handle parentheses like "general (ALT9).bat"
+      const child = spawn('powershell', [
+        '-NoProfile', '-Command',
+        `Start-Process -FilePath '${exePath}'`
+      ], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      child.unref();
+    } else {
+      // .exe/.lnk: spawn directly — simple and reliable
+      const child = spawn(exePath, args, {
+        detached: true,
+        stdio: 'ignore'
+      });
+      child.unref();
+    }
     return { ok: true };
   } catch (e) {
     return { error: `${name}: failed to launch — ${e.message}` };
   }
 }
 
-// Launch Firefox with multiple URLs — each URL as a separate -url argument
+// Launch Firefox with multiple URLs — spawn directly, no PowerShell needed for .exe
 async function launchFirefox(firefoxPath, urls) {
   if (!fs.existsSync(firefoxPath)) {
     return { error: `Firefox: file not found — "${firefoxPath}"` };
   }
 
   try {
-    // Firefox: first URL opens normally, rest via -new-tab
-    // But simplest: just pass all URLs as arguments
-    const urlStr = urls.length > 0
-      ? ` -ArgumentList '${urls.join("', '")}'`
-      : '';
-    const child = spawn('powershell', [
-      '-NoProfile', '-Command',
-      `Start-Process -FilePath '${firefoxPath}'${urlStr}`
-    ], {
+    // spawn handles spaces in exe path fine (no shell involved)
+    // Firefox accepts URLs as plain arguments
+    const child = spawn(firefoxPath, urls, {
       detached: true,
       stdio: 'ignore'
     });

@@ -11,11 +11,6 @@
       box-sizing: border-box;
     }
 
-    @font-face {
-      font-family: 'SystemFont';
-      src: local('Segoe UI'), local('Arial'), local('sans-serif');
-    }
-
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
       background: transparent;
@@ -38,7 +33,6 @@
       overflow: hidden;
     }
 
-    /* Animated background glow */
     .app::before {
       content: '';
       position: absolute;
@@ -151,7 +145,7 @@
       margin-bottom: 50px;
     }
 
-    /* Buttons */
+    /* Launch button */
     .btn-launch {
       width: 180px;
       height: 180px;
@@ -205,7 +199,7 @@
     }
 
     .btn-launch.launching {
-      animation: launchSpin 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: launchSpin 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
       pointer-events: none;
     }
 
@@ -236,12 +230,34 @@
       box-shadow: 0 0 20px rgba(138, 43, 226, 0.1);
     }
 
+    /* Status bar */
+    .status {
+      position: absolute;
+      bottom: 16px;
+      left: 20px;
+      right: 20px;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.2);
+      font-size: 11px;
+      letter-spacing: 1px;
+      transition: all 0.5s ease;
+      line-height: 1.4;
+    }
+
+    .status.active {
+      color: rgba(0, 255, 255, 0.6);
+    }
+
+    .status.error {
+      color: rgba(255, 80, 80, 0.8);
+    }
+
     /* Settings page */
     .settings-header {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       width: 100%;
     }
 
@@ -280,21 +296,12 @@
       padding-right: 8px;
     }
 
-    .settings-form::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    .settings-form::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .settings-form::-webkit-scrollbar-thumb {
-      background: rgba(0, 255, 255, 0.2);
-      border-radius: 2px;
-    }
+    .settings-form::-webkit-scrollbar { width: 4px; }
+    .settings-form::-webkit-scrollbar-track { background: transparent; }
+    .settings-form::-webkit-scrollbar-thumb { background: rgba(0, 255, 255, 0.2); border-radius: 2px; }
 
     .field {
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       animation: fieldIn 0.4s ease backwards;
     }
 
@@ -318,6 +325,16 @@
       margin-bottom: 6px;
     }
 
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-row input {
+      flex: 1;
+    }
+
     .field input {
       width: 100%;
       padding: 10px 14px;
@@ -339,6 +356,25 @@
 
     .field input::placeholder {
       color: rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-browse {
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      color: rgba(0, 255, 255, 0.5);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-browse:hover {
+      border-color: rgba(0, 255, 255, 0.3);
+      color: rgba(0, 255, 255, 0.8);
+      background: rgba(0, 255, 255, 0.05);
     }
 
     .btn-save {
@@ -367,24 +403,7 @@
       background: rgba(0, 255, 100, 0.05);
     }
 
-    /* Status text */
-    .status {
-      position: absolute;
-      bottom: 16px;
-      left: 0;
-      right: 0;
-      text-align: center;
-      color: rgba(255, 255, 255, 0.2);
-      font-size: 11px;
-      letter-spacing: 1px;
-      transition: all 0.5s ease;
-    }
-
-    .status.active {
-      color: rgba(0, 255, 255, 0.5);
-    }
-
-    /* URL list in settings */
+    /* URL list */
     .urls-list {
       display: flex;
       flex-direction: column;
@@ -397,11 +416,9 @@
       align-items: center;
     }
 
-    .url-row input {
-      flex: 1;
-    }
+    .url-row input { flex: 1; }
 
-    .btn-url {
+    .btn-icon {
       width: 28px;
       height: 28px;
       border-radius: 6px;
@@ -417,12 +434,12 @@
       flex-shrink: 0;
     }
 
-    .btn-url.add:hover {
+    .btn-icon.add:hover {
       border-color: rgba(0, 255, 100, 0.4);
       color: #00ff64;
     }
 
-    .btn-url.remove:hover {
+    .btn-icon.remove:hover {
       border-color: rgba(255, 80, 80, 0.4);
       color: #ff5050;
     }
@@ -464,28 +481,40 @@
       <div class="settings-form">
         <div class="field">
           <label>Steam</label>
-          <input type="text" id="input-steam" placeholder="C:\Program Files (x86)\Steam\steam.exe">
+          <div class="input-row">
+            <input type="text" id="input-steam" placeholder="C:\Program Files (x86)\Steam\steam.exe">
+            <button class="btn-browse" onclick="browseFor('input-steam', 'Steam')">Browse</button>
+          </div>
         </div>
 
         <div class="field">
           <label>Discord</label>
-          <input type="text" id="input-discord" placeholder="C:\Users\...\Discord\Update.exe">
+          <div class="input-row">
+            <input type="text" id="input-discord" placeholder="C:\Users\...\Discord\Update.exe">
+            <button class="btn-browse" onclick="browseFor('input-discord', 'Discord')">Browse</button>
+          </div>
         </div>
 
         <div class="field">
           <label>Firefox</label>
-          <input type="text" id="input-firefox" placeholder="C:\Program Files\Mozilla Firefox\firefox.exe">
+          <div class="input-row">
+            <input type="text" id="input-firefox" placeholder="C:\Program Files\Mozilla Firefox\firefox.exe">
+            <button class="btn-browse" onclick="browseFor('input-firefox', 'Firefox')">Browse</button>
+          </div>
         </div>
 
         <div class="field">
           <label>Zapret</label>
-          <input type="text" id="input-zapret" placeholder="Path to zapret executable">
+          <div class="input-row">
+            <input type="text" id="input-zapret" placeholder="Path to zapret .exe or .bat">
+            <button class="btn-browse" onclick="browseFor('input-zapret', 'Zapret')">Browse</button>
+          </div>
         </div>
 
         <div class="field">
           <label>Firefox Tabs</label>
           <div class="urls-list" id="urls-list"></div>
-          <button class="btn-url add" onclick="addUrl()" style="margin-top: 8px; width: auto; padding: 4px 12px; font-size: 12px;">+ Add URL</button>
+          <button class="btn-icon add" onclick="addUrl()" style="margin-top: 8px; width: auto; padding: 4px 12px; font-size: 12px;">+ Add URL</button>
         </div>
 
         <button class="btn-save" id="btn-save" onclick="doSave()">Save</button>
@@ -496,7 +525,6 @@
   <script>
     let currentSettings = {};
 
-    // Load settings on startup
     window.addEventListener('DOMContentLoaded', async () => {
       currentSettings = await window.api.getSettings();
       populateSettings();
@@ -517,18 +545,21 @@
         const row = document.createElement('div');
         row.className = 'url-row';
         row.innerHTML = `
-          <input type="text" value="${url}" onchange="updateUrl(${i}, this.value)" placeholder="https://...">
-          <button class="btn-url remove" onclick="removeUrl(${i})">×</button>
+          <input type="text" value="${escapeHtml(url)}" onchange="updateUrl(${i}, this.value)" placeholder="https://...">
+          <button class="btn-icon remove" onclick="removeUrl(${i})">&#215;</button>
         `;
         list.appendChild(row);
       });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     function addUrl() {
       currentSettings.firefoxUrls = currentSettings.firefoxUrls || [];
       currentSettings.firefoxUrls.push('');
       renderUrls();
-      // Focus the new input
       const inputs = document.querySelectorAll('#urls-list input');
       if (inputs.length) inputs[inputs.length - 1].focus();
     }
@@ -540,6 +571,13 @@
 
     function updateUrl(index, value) {
       currentSettings.firefoxUrls[index] = value;
+    }
+
+    async function browseFor(inputId, title) {
+      const filePath = await window.api.browseFile('Select ' + title);
+      if (filePath) {
+        document.getElementById(inputId).value = filePath;
+      }
     }
 
     async function doSave() {
@@ -580,28 +618,51 @@
       btn.classList.add('launching');
       btn.textContent = '...';
       status.textContent = 'Closing apps...';
-      status.classList.add('active');
+      status.className = 'status active';
 
       try {
-        await window.api.launchDefault();
-        status.textContent = 'Launched!';
-        btn.textContent = 'DONE';
+        const result = await window.api.launchDefault();
 
-        setTimeout(() => {
-          status.textContent = '';
-          status.classList.remove('active');
-          btn.textContent = 'START';
-          btn.classList.remove('launching');
-        }, 3000);
+        if (result.errors && result.errors.length > 0) {
+          // Some errors occurred
+          const launchedText = result.launched.length > 0
+            ? 'Launched: ' + result.launched.join(', ')
+            : '';
+          const errorText = result.errors.join('\n');
+
+          status.className = 'status error';
+          status.textContent = errorText;
+          btn.textContent = result.launched.length > 0 ? 'PARTIAL' : 'ERROR';
+
+          setTimeout(() => {
+            status.textContent = '';
+            status.className = 'status';
+            btn.textContent = 'START';
+            btn.classList.remove('launching');
+          }, 8000);
+        } else {
+          // All good
+          status.className = 'status active';
+          status.textContent = 'Launched: ' + (result.launched || []).join(', ');
+          btn.textContent = 'DONE';
+
+          setTimeout(() => {
+            status.textContent = '';
+            status.className = 'status';
+            btn.textContent = 'START';
+            btn.classList.remove('launching');
+          }, 4000);
+        }
       } catch (e) {
-        status.textContent = 'Error: ' + e.message;
+        status.className = 'status error';
+        status.textContent = 'Error: ' + (e.message || 'Unknown error');
         btn.textContent = 'START';
         btn.classList.remove('launching');
 
         setTimeout(() => {
           status.textContent = '';
-          status.classList.remove('active');
-        }, 5000);
+          status.className = 'status';
+        }, 6000);
       }
     }
   </script>

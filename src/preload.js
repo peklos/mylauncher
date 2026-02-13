@@ -5,5 +5,6 @@ contextBridge.exposeInMainWorld('api', {
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
   launchDefault: () => ipcRenderer.invoke('launch-default'),
   minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
-  closeWindow: () => ipcRenderer.invoke('close-window')
+  closeWindow: () => ipcRenderer.invoke('close-window'),
+  browseFile: (title) => ipcRenderer.invoke('browse-file', title)
 });

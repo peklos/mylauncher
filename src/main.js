@@ -103,7 +103,7 @@ ipcMain.handle('launch-default', async () => {
   // Close all visible windows EXCEPT our own launcher
   try {
     // Get our own PID so we don't kill ourselves
-    const killCmd = `powershell -Command "Get-Process | Where-Object { $_.MainWindowTitle -ne '' -and $_.Id -ne ${myPid} -and $_.ProcessName -ne 'MyLauncher' -and $_.ProcessName -ne 'electron' } | Stop-Process -Force -ErrorAction SilentlyContinue"`;
+    const killCmd = `powershell -NoProfile -Command "Get-Process | Where-Object { $_.MainWindowTitle -ne '' -and $_.Id -ne ${myPid} -and $_.ProcessName -ne 'MyLauncher' -and $_.ProcessName -ne 'electron' } | Stop-Process -Force -ErrorAction SilentlyContinue"`;
     await execPromise(killCmd);
   } catch (e) {
     // Some processes may refuse to close, that's ok
@@ -143,7 +143,7 @@ ipcMain.handle('launch-default', async () => {
   // Launch Firefox with tabs
   if (settings.firefoxPath) {
     const urls = (settings.firefoxUrls || []).filter(u => u.trim());
-    const result = await launchApp(settings.firefoxPath, urls, 'Firefox');
+    const result = await launchFirefox(settings.firefoxPath, urls);
     if (result.error) errors.push(result.error);
     else launched.push('Firefox');
   }
@@ -154,35 +154,81 @@ ipcMain.handle('launch-default', async () => {
   };
 });
 
-// Launch an app robustly using spawn (detached so it lives after we potentially close)
+// Launch an app with proper handling for .bat/.cmd/.lnk and .exe
 async function launchApp(exePath, args, name) {
-  // Check if file exists
   if (!fs.existsSync(exePath)) {
     return { error: `${name}: file not found — "${exePath}"` };
   }
 
+  const ext = path.extname(exePath).toLowerCase();
+  const isBatOrCmd = ext === '.bat' || ext === '.cmd';
+  const isLnk = ext === '.lnk';
+
   try {
-    const child = spawn(exePath, args, {
-      detached: true,
-      stdio: 'ignore',
-      shell: false
-    });
-    child.unref();
+    if (isBatOrCmd) {
+      // .bat/.cmd — run via cmd /c with hidden window so findstr etc don't pop up
+      const child = spawn('cmd.exe', ['/c', exePath, ...args], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      child.unref();
+    } else if (isLnk) {
+      // .lnk shortcuts — open via cmd start
+      const child = spawn('cmd.exe', ['/c', 'start', '', exePath, ...args], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      child.unref();
+    } else {
+      // .exe — spawn directly
+      const child = spawn(exePath, args, {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      child.unref();
+    }
     return { ok: true };
   } catch (e) {
-    // Fallback: try via shell (handles .lnk shortcuts and .bat files)
-    try {
-      await execPromise(`start "" "${exePath}" ${args.map(a => `"${a}"`).join(' ')}`);
-      return { ok: true };
-    } catch (e2) {
-      return { error: `${name}: failed to launch — ${e2.message}` };
+    return { error: `${name}: failed to launch — ${e.message}` };
+  }
+}
+
+// Launch Firefox with multiple URLs — need separate spawn per URL for tabs to work
+async function launchFirefox(firefoxPath, urls) {
+  if (!fs.existsSync(firefoxPath)) {
+    return { error: `Firefox: file not found — "${firefoxPath}"` };
+  }
+
+  try {
+    if (urls.length === 0) {
+      const child = spawn(firefoxPath, [], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      child.unref();
+    } else {
+      // Launch Firefox with all URLs as arguments — pass them all at once
+      const child = spawn(firefoxPath, urls, {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+        shell: true
+      });
+      child.unref();
     }
+    return { ok: true };
+  } catch (e) {
+    return { error: `Firefox: failed to launch — ${e.message}` };
   }
 }
 
 function execPromise(cmd) {
   return new Promise((resolve, reject) => {
-    exec(cmd, { shell: 'cmd.exe', timeout: 10000 }, (error, stdout, stderr) => {
+    exec(cmd, { shell: 'cmd.exe', timeout: 10000, windowsHide: true }, (error, stdout, stderr) => {
       if (error) reject(error);
       else resolve(stdout);
     });

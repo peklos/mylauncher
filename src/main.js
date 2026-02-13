@@ -103,8 +103,7 @@ ipcMain.handle('launch-default', async () => {
   // Close all visible windows EXCEPT our own launcher
   try {
     // Get our own PID so we don't kill ourselves
-    const killCmd = `powershell -NoProfile -Command "Get-Process | Where-Object { $_.MainWindowTitle -ne '' -and $_.Id -ne ${myPid} -and $_.ProcessName -ne 'MyLauncher' -and $_.ProcessName -ne 'electron' } | Stop-Process -Force -ErrorAction SilentlyContinue"`;
-    await execPromise(killCmd);
+    await execPromise(`powershell -NoProfile -Command "Get-Process | Where-Object { $_.MainWindowTitle -ne '' -and $_.Id -ne ${myPid} -and $_.ProcessName -ne 'MyLauncher' -and $_.ProcessName -ne 'electron' } | Stop-Process -Force -ErrorAction SilentlyContinue"`);
   } catch (e) {
     // Some processes may refuse to close, that's ok
   }
@@ -154,72 +153,52 @@ ipcMain.handle('launch-default', async () => {
   };
 });
 
-// Launch an app with proper handling for .bat/.cmd/.lnk and .exe
+// Launch any app via PowerShell Start-Process — handles spaces, parentheses, any path
 async function launchApp(exePath, args, name) {
   if (!fs.existsSync(exePath)) {
     return { error: `${name}: file not found — "${exePath}"` };
   }
 
-  const ext = path.extname(exePath).toLowerCase();
-  const isBatOrCmd = ext === '.bat' || ext === '.cmd';
-  const isLnk = ext === '.lnk';
-
   try {
-    if (isBatOrCmd) {
-      // .bat/.cmd — run via cmd /c with hidden window so findstr etc don't pop up
-      const child = spawn('cmd.exe', ['/c', exePath, ...args], {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true
-      });
-      child.unref();
-    } else if (isLnk) {
-      // .lnk shortcuts — open via cmd start
-      const child = spawn('cmd.exe', ['/c', 'start', '', exePath, ...args], {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true
-      });
-      child.unref();
-    } else {
-      // .exe — spawn directly
-      const child = spawn(exePath, args, {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true
-      });
-      child.unref();
-    }
+    // PowerShell Start-Process with single-quoted path handles ALL special chars
+    // including spaces and parentheses like "general (ALT9).bat"
+    const argsStr = args.length > 0
+      ? ` -ArgumentList '${args.join("', '")}'`
+      : '';
+    const child = spawn('powershell', [
+      '-NoProfile', '-Command',
+      `Start-Process -FilePath '${exePath}'${argsStr}`
+    ], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    child.unref();
     return { ok: true };
   } catch (e) {
     return { error: `${name}: failed to launch — ${e.message}` };
   }
 }
 
-// Launch Firefox with multiple URLs — need separate spawn per URL for tabs to work
+// Launch Firefox with multiple URLs — each URL as a separate -url argument
 async function launchFirefox(firefoxPath, urls) {
   if (!fs.existsSync(firefoxPath)) {
     return { error: `Firefox: file not found — "${firefoxPath}"` };
   }
 
   try {
-    if (urls.length === 0) {
-      const child = spawn(firefoxPath, [], {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true
-      });
-      child.unref();
-    } else {
-      // Launch Firefox with all URLs as arguments — pass them all at once
-      const child = spawn(firefoxPath, urls, {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true,
-        shell: true
-      });
-      child.unref();
-    }
+    // Firefox: first URL opens normally, rest via -new-tab
+    // But simplest: just pass all URLs as arguments
+    const urlStr = urls.length > 0
+      ? ` -ArgumentList '${urls.join("', '")}'`
+      : '';
+    const child = spawn('powershell', [
+      '-NoProfile', '-Command',
+      `Start-Process -FilePath '${firefoxPath}'${urlStr}`
+    ], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    child.unref();
     return { ok: true };
   } catch (e) {
     return { error: `Firefox: failed to launch — ${e.message}` };
@@ -228,7 +207,7 @@ async function launchFirefox(firefoxPath, urls) {
 
 function execPromise(cmd) {
   return new Promise((resolve, reject) => {
-    exec(cmd, { shell: 'cmd.exe', timeout: 10000, windowsHide: true }, (error, stdout, stderr) => {
+    exec(cmd, { timeout: 15000, windowsHide: true }, (error, stdout, stderr) => {
       if (error) reject(error);
       else resolve(stdout);
     });
